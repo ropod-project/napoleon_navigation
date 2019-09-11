@@ -165,14 +165,9 @@ action:
               z: 0.0
               w: 1.0
     -
-      id: '91'
-      name: 'BRSU_C_L0_C1_Door1'
-      type: 'door'
-      floor_number: 0
-    -
       id: '123'
       name: ''
-      type: 'area'
+      type: 'junction'
       floor_number: 0
       sub_areas:
         -
@@ -232,7 +227,7 @@ action:
     -
       id: '274'
       name: ''
-      type: 'area'
+      type: 'junction'
       floor_number: 0
       sub_areas:
         -
