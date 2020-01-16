@@ -35,6 +35,8 @@
 #include <nav_msgs/Path.h>
 
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Int8.h>
 #include <stdlib.h>
 
 std::vector<PointID> pointlist;
@@ -64,6 +66,11 @@ ropod_ros_msgs::RoutePlannerResult debug_route_planner_result_;
 
 struct NapoleonConfig config;
 ropod_ros_msgs::TaskProgressGOTO progress_msg;
+
+std_msgs::String current_state_msg;
+ros::Publisher current_state_pub;
+std_msgs::Int8 current_state_enum_msg;
+ros::Publisher current_state_enum_pub;
 
 void getObstaclesCallback(const ed_gui_server::objsPosVel::ConstPtr& obsarray)
 {
@@ -488,7 +495,7 @@ void dynamicReconfigureCallback(napoleon_navigation::NapoleonNavigationConfig &d
     config.V_INTER_TURNING = dyn_config.v_inter_turning;
     config.V_INTER_ACC = config.V_INTER_TURNING;
     config.V_INTER_DEC = config.V_INTER_TURNING;
-    config.V_ENTRY = config.V_INTER_TURNING;
+    config.V_ENTRY = dyn_config.v_entry;
     config.V_STEERSATURATION = dyn_config.v_steersaturation;
     config.DELTA_DOT_LIMIT = dyn_config.delta_dot_limit;
     config.A_MAX = dyn_config.a_max;
@@ -840,6 +847,10 @@ void updateStateAndTask()
             pred_state[j] = pred_state[prevstate];
             update_state_points = false;
         }
+        if (pred_state[prevstate] == TURNING)
+        {
+            std::cout << "Current next hallway angle " << cur_next_hallway_angle << std::endl;
+        }
     // Going straight on an intersection / ot between hallways
     } else if (!task2[1].empty()) {
         if (pred_ropod_on_entry_hall[j] && pred_state[prevstate] == CRUSING) {
@@ -1010,6 +1021,11 @@ void computeSteeringAndVelocity()
         // disp([num2str[j],' - Ropod is now cruising']);
         if (pred_state[j] == CRUSING) {   // Cruising up
             if(j==1) printf("CRUSING\n");
+            if (j == 1)
+            {
+                current_state_msg.data = "CRUISING";
+                current_state_enum_msg.data = pred_state[j];
+            }
             if (update_state_points) {
                 point_rear = getPointByID(task1[0],pointlist);
                 point_front = getPointByID(task1[1],pointlist);
@@ -1022,6 +1038,11 @@ void computeSteeringAndVelocity()
             v_des = config.V_CRUISING;
         } else if (pred_state[j] == GOING_STRAIGHT_ON_INTERSECTION) { // Straight on inter
             if(j==1) printf("GOING_STRAIGHT_ON_INTERSECTION\n");
+            if (j == 1)
+            {
+                current_state_msg.data = "GOING_STRAIGHT_ON_INTERSECTION";
+                current_state_enum_msg.data = pred_state[j];
+            }
             if (update_state_points) {
                 point_rear = getPointByID(task2[0],pointlist);
                 point_front = getPointByID(task2[1],pointlist);
@@ -1033,6 +1054,11 @@ void computeSteeringAndVelocity()
             v_des = config.V_INTER_ACC;
         } else if (pred_state[j] == TIGHT_OVERTAKE) { // Tight overtake
             if(j==1) printf("TIGHT_OVERTAKE\n");
+            if (j == 1)
+            {
+                current_state_msg.data = "TIGHT_OVERTAKE";
+                current_state_enum_msg.data = pred_state[j];
+            }
             rw_p_rear = getPointByID(task1[0],pointlist);
             cur_obj = getAreaByID(area1ID,arealist);
             areaIDs = cur_obj.getPointIDs();
@@ -1056,6 +1082,11 @@ void computeSteeringAndVelocity()
             v_des = config.V_OVERTAKE;
         } else if (pred_state[j] == SPACIOUS_OVERTAKE) { // Spacious overtake
             if(j==1) printf("SPACIOUS_OVERTAKE\n");
+            if (j == 1)
+            {
+                current_state_msg.data = "SPACIOUS_OVERTAKE";
+                current_state_enum_msg.data = pred_state[j];
+            }
 
             point_rear = getPointByID(task1[0],pointlist);
             point_front = getPointByID(task1[1],pointlist);
@@ -1073,15 +1104,20 @@ void computeSteeringAndVelocity()
         if(j==1) showWallPoints(local_wallpoint_front, local_wallpoint_rear, wallmarker_pub);
         double distance_point_to_line = -distToLine(pred_xy_ropod[j-1], glob_wallpoint_rear, glob_wallpoint_front);
         double carrot_length = config.CARROT_LENGTH;
-        if(distance_point_to_line < 0)
-        {
-            //if(j==1) printf("DECREASE CARROT\n");
-            //carrot_length = 0.3*CARROT_LENGTH; // this increases sharpness of corrections
-        }
+        //if(distance_point_to_line < 0)
+        //{
+        //    if(j==1) printf("DECREASE CARROT\n");
+        //    carrot_length = 0.3 * config.CARROT_LENGTH; // this increases sharpness of corrections
+        //}
 
         pred_phi_des[j] = getSteering(local_wallpoint_front, local_wallpoint_rear, pred_tube_width[j], carrot_length, config.FEELER_SIZE );
     } else if (pred_state[j] == ENTRY_BEFORE_TURN_ON_INTERSECTION || pred_state[j] == ENTRY_BEFORE_GOING_STRAIGHT_ON_INTERSECTION) {
         if(j==1) printf("ENTRY_BEFORE_INTERSECTION\n");
+        if (j == 1)
+        {
+            current_state_msg.data = "ENTRY_BEFORE_INTERSECTION";
+            current_state_enum_msg.data = pred_state[j];
+        }
         // disp([num2str[j],' - Ropod is now in entry']);
         if (update_state_points) {
             point_rear = getPointByID(task1[0],pointlist);
@@ -1098,6 +1134,11 @@ void computeSteeringAndVelocity()
         v_des = config.V_ENTRY;
     } else if (pred_state[j] == ACCELERATE_ON_INTERSECTION) {
         if(j==1) printf("ACCELERATE_ON_INTERSECTION\n");
+        if (j == 1)
+        {
+            current_state_msg.data = "ACCELERATE_ON_INTERSECTION";
+            current_state_enum_msg.data = pred_state[j];
+        }
         // disp([num2str[j],' - Ropod is at inter, driving forward']);
         if (update_state_points) {
             point_rear = getPointByID(task1[0],pointlist);
@@ -1134,6 +1175,11 @@ void computeSteeringAndVelocity()
         }
     } else if (pred_state[j] == ALIGN_AXIS_AT_INTERSECTION) {
         if(j==1) printf("ALIGN_AXIS_AT_INTERSECTION\n");
+        if (j == 1)
+        {
+            current_state_msg.data = "ALIGN_AXIS_AT_INTERSECTION";
+            current_state_enum_msg.data = pred_state[j];
+        }
         // disp([num2str[j],' - Ropod is at inter, driving forward']);
         if (update_state_points) {
             point_rear = getPointByID(task1[0],pointlist);
@@ -1169,6 +1215,11 @@ void computeSteeringAndVelocity()
         }
     } else if (pred_state[j] == TURNING) {
         if(j==1) printf("TURNING\n");
+        if (j == 1)
+        {
+            current_state_msg.data = "TURNING";
+            current_state_enum_msg.data = pred_state[j];
+        }
         // disp([num2str[j],' - Ropod is at inter, taking the turn']);
         if (update_state_points) {
             point_rear = getPointByID(task2[0],pointlist);
@@ -1229,6 +1280,9 @@ void computeSteeringAndVelocity()
         pred_accel[j] = sgn(v_des_scaled[j]-pred_v_ropod_plan[j-1])*config.A_MAX;
     }
     //ROS_INFO("pred_accel: %f", pred_accel[j]);
+
+    current_state_pub.publish(current_state_msg);
+    current_state_enum_pub.publish(current_state_enum_msg);
 }
 
 
@@ -2301,6 +2355,8 @@ int main(int argc, char** argv)
     ros::Publisher vel_pub = nroshndl.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 
     feedback_pub = nroshndl.advertise<ropod_ros_msgs::TaskProgressGOTO>("/napoleon_driving/feedback", 1);
+    current_state_pub = nroshndl.advertise<std_msgs::String>("/napoleon_driving/current_state", 1);
+    current_state_enum_pub = nroshndl.advertise<std_msgs::Int8>("/napoleon_driving/current_state_enum", 1);
 
     // Visualize map nodes and robot
     ropodmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/ropodpoints", 1);
@@ -2336,13 +2392,13 @@ int main(int argc, char** argv)
             }
         }
 
-        if(start_navigation)
-        {
-            std::vector<ropod_ros_msgs::Area> planner_areas = debug_route_planner_result_.areas;
-            ROS_INFO("Got new route via debug topic; following now");
-            followRoute(planner_areas, vel_pub, rate);
-            start_navigation =  false;
-        }
+//        if(start_navigation)
+//        {
+//            std::vector<ropod_ros_msgs::Area> planner_areas = debug_route_planner_result_.areas;
+//            ROS_INFO("Got new route via debug topic; following now");
+//            followRoute(planner_areas, vel_pub, rate);
+//            start_navigation =  false;
+//        }
         ros::spinOnce();
     }
 
