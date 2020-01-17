@@ -1759,7 +1759,8 @@ void resetNavigation()
 }
 
 void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
-                 ros::Publisher& vel_pub, ros::Rate& rate)
+                 ros::Publisher& vel_pub, ros::Rate& rate,
+                 actionlib::SimpleActionServer<ropod_ros_msgs::GoToAction>& as)
 {
     resetNavigation();
 
@@ -2241,6 +2242,10 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
                 ros::spinOnce();
             }
         }
+        if (as.isPreemptRequested()){
+            ROS_INFO("\n\n\nGoal cancelled!\n\n\n");
+            break;
+        }
 
     }
     // Will only perform this when ropod has reached target
@@ -2346,10 +2351,17 @@ public:
             std::vector<ropod_ros_msgs::Area> planner_areas = route_planner_result_.areas;
 
             ROS_INFO("Got new route; following now");
-            followRoute(planner_areas, vel_pub_, napoleon_rate_);
+            followRoute(planner_areas, vel_pub_, napoleon_rate_, as_);
 
-            status_ = false;
-            as_.setSucceeded();
+            if (as_.isPreemptRequested())
+            {
+                as_.setPreempted();
+            }
+            else
+            {
+                status_ = false;
+                as_.setSucceeded();
+            }
         }
     }
 };
