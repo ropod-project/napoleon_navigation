@@ -35,6 +35,7 @@
 #include <nav_msgs/Path.h>
 
 #include <std_msgs/Bool.h>
+#include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Int8.h>
 #include <stdlib.h>
@@ -62,6 +63,7 @@ geometry_msgs::PoseStamped simple_goal;
 
 bool action_server_enabled =  false;
 bool goal_received = false;
+bool navigation_paused = false;
 ropod_ros_msgs::RoutePlannerResult debug_route_planner_result_;
 
 struct NapoleonConfig config;
@@ -1699,6 +1701,12 @@ void getDebugRoutePlanCallback(const ropod_ros_msgs::RoutePlannerResultConstPtr&
     start_navigation = true;
 }
 
+void pauseNavCallback(const std_msgs::EmptyConstPtr& msg)
+{
+    navigation_paused = !navigation_paused;
+    ROS_INFO_STREAM("navigation_paused " << navigation_paused);
+}
+
 void resetNavigation()
 {
     assignment.clear();
@@ -2226,6 +2234,14 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
             ROS_WARN("Control loop missed its desired rate of %.4fHz... the loop actually took %.4f seconds", F_PLANNER, rate.cycleTime().toSec());
         }
 
+        if (navigation_paused){
+            ROS_INFO("\n\n\nNavigation Paused!\n\n\n");
+            while (navigation_paused){
+                rate.sleep();
+                ros::spinOnce();
+            }
+        }
+
     }
     // Will only perform this when ropod has reached target
     geometry_msgs::Twist cmd_vel;
@@ -2350,6 +2366,7 @@ int main(int argc, char** argv)
     ros::Subscriber amcl_pose_sub = nroshndl.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, getAmclPoseCallback);
     ros::Subscriber ropod_odom_sub = nroshndl.subscribe<nav_msgs::Odometry>("/ropod/odom", 100, getOdomVelCallback);
     ros::Subscriber ropod_debug_plan_sub = nroshndl.subscribe< ropod_ros_msgs::RoutePlannerResult >("/ropod/debug_route_plan", 1, getDebugRoutePlanCallback);
+    ros::Subscriber ropod_pause_nav_sub = nroshndl.subscribe< std_msgs::Empty >("/ropod/napoleon/pause_nav", 1, pauseNavCallback);
 
     ros::Subscriber obstacle_sub = nroshndl.subscribe<ed_gui_server::objsPosVel>("/ed/gui/objectPosVel", 10, getObstaclesCallback);
     ros::Publisher vel_pub = nroshndl.advertise<geometry_msgs::Twist>("cmd_vel", 1);
