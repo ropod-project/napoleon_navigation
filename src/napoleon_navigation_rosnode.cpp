@@ -62,6 +62,7 @@ geometry_msgs::PoseStamped simple_goal;
 
 bool action_server_enabled =  false;
 bool goal_received = false;
+bool navigation_paused = false;
 ropod_ros_msgs::RoutePlannerResult debug_route_planner_result_;
 
 struct NapoleonConfig config;
@@ -1699,6 +1700,12 @@ void getDebugRoutePlanCallback(const ropod_ros_msgs::RoutePlannerResultConstPtr&
     start_navigation = true;
 }
 
+void pauseNavCallback(const std_msgs::BoolConstPtr& msg)
+{
+    navigation_paused = msg->data;
+    ROS_INFO_STREAM("navigation_paused " << navigation_paused);
+}
+
 void resetNavigation()
 {
     assignment.clear();
@@ -1751,7 +1758,8 @@ void resetNavigation()
 }
 
 void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
-                 ros::Publisher& vel_pub, ros::Rate& rate)
+                 ros::Publisher& vel_pub, ros::Rate& rate,
+                 actionlib::SimpleActionServer<ropod_ros_msgs::GoToAction>& as)
 {
     resetNavigation();
 
@@ -1860,8 +1868,14 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
     std::clock_t start_loop;
 
     progress_msg.totalNumber = planner_areas.size();
-    while(ros::ok() && !ropod_reached_target)
+    while(ros::ok() && !ropod_reached_target && !as.isPreemptRequested())
     {
+        if (navigation_paused){
+            ROS_INFO("Navigation Paused!");
+            rate.sleep();
+            ros::spinOnce();
+            continue;
+        }
         // Process scan data
         if(scan_available)
         {
@@ -2330,10 +2344,17 @@ public:
             std::vector<ropod_ros_msgs::Area> planner_areas = route_planner_result_.areas;
 
             ROS_INFO("Got new route; following now");
-            followRoute(planner_areas, vel_pub_, napoleon_rate_);
+            followRoute(planner_areas, vel_pub_, napoleon_rate_, as_);
 
-            status_ = false;
-            as_.setSucceeded();
+            if (as_.isPreemptRequested())
+            {
+                as_.setPreempted();
+            }
+            else
+            {
+                status_ = false;
+                as_.setSucceeded();
+            }
         }
     }
 };
@@ -2350,6 +2371,7 @@ int main(int argc, char** argv)
     ros::Subscriber amcl_pose_sub = nroshndl.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, getAmclPoseCallback);
     ros::Subscriber ropod_odom_sub = nroshndl.subscribe<nav_msgs::Odometry>("/ropod/odom", 100, getOdomVelCallback);
     ros::Subscriber ropod_debug_plan_sub = nroshndl.subscribe< ropod_ros_msgs::RoutePlannerResult >("/ropod/debug_route_plan", 1, getDebugRoutePlanCallback);
+    ros::Subscriber ropod_pause_nav_sub = nroshndl.subscribe< std_msgs::Bool >("/ropod/napoleon/pause", 1, pauseNavCallback);
 
     ros::Subscriber obstacle_sub = nroshndl.subscribe<ed_gui_server::objsPosVel>("/ed/gui/objectPosVel", 10, getObstaclesCallback);
     ros::Publisher vel_pub = nroshndl.advertise<geometry_msgs::Twist>("cmd_vel", 1);
