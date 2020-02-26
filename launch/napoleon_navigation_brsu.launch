@@ -2,8 +2,10 @@
 <launch>
 
 
-  	<arg name="robotName" default="ropod"/>
+  	<arg name="robot_name" default="ropod"/>
+    <arg name="load_name" default="load"/>
 	<arg name="laser1_name" value ="laser"/>
+    <arg name="amcl_topic" default ="/amcl_pose"/>
         <!--<arg name="map_file" default="$(find ed_object_models)/models/hospital_test_amcl/walls/map_amcl.yaml" />-->
 	<!--<arg name="map_file" default="$(find ropod_navigation_test)/config/amk-f064/map.yaml"/>-->
         <!--<arg name="map_file" default="/home/cesar/ropod-project-software/catkin_workspace/src/applications/occupancy_grids/tue/lab-level/map.yaml"/>-->
@@ -14,7 +16,7 @@
    <!-- <node pkg="ed" type="ed" name="ed" args="$(find ropod_navigation_test)/config/model-example-ropod-napoleon-ynavigation-ED.yaml"/> -->
     <!-- <node pkg="ed" type="ed" name="ed" args="$(find ropod_navigation_test)/config/model-example-ropod-napoleon-ynavigation-ED.yaml" launch-prefix="xterm -e gdb -_-args"/>-->
 
-    <node name="napoleon_navigation" pkg="napoleon_navigation" type="napoleon_navigation" output="screen">
+    <node name="napoleon_navigation" pkg="napoleon_navigation" type="napoleon_navigation" output="screen" args="$(arg robot_name)">
 
         <rosparam file="$(find ropod_navigation_test)/config/parameters/costmap_common_params.yaml" command="load" ns="local_costmap" />
         <rosparam file="$(find ropod_navigation_test)/config/parameters/footprint_ropod.yaml" command="load" ns="local_costmap" />
@@ -25,11 +27,13 @@
         <param name="default_ropod_load_navigation_param_file" value ="$(find napoleon_navigation)/config/footprint_local_planner_params_ropod_load.yaml"/>
 
         <!-- In Gazebo: -->
-        <remap from="/napoleon_navigation/cmd_vel" to="/load/cmd_vel"/>
+        <remap from="/napoleon_navigation/cmd_vel" to="/$(arg load_name)/cmd_vel"/>
         <!-- On ropod: -->
         <!--<remap from="/napoleon_navigation/cmd_vel" to="/ropod_tue_1/cmd_vel"/>-->
         <remap from="/napoleon_navigation/scan" to="/projected_scan_front"/> <!-- for BRSU ropod -->
 
+        <!-- For simulations -->
+        <remap from="/amcl_pose" to="$(arg amcl_topic)"/>
     </node>
     <node name="config_switcher" pkg="napoleon_navigation" type="config_switcher" output="screen">
         <param name="ropod_config_file" value="$(find napoleon_navigation)/config/napoleon_navigation_ropod.yaml"/>

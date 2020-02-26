@@ -73,6 +73,8 @@ ros::Publisher current_state_pub;
 std_msgs::Int8 current_state_enum_msg;
 ros::Publisher current_state_enum_pub;
 
+std::string robot_name;
+
 void getObstaclesCallback(const ed_gui_server::objsPosVel::ConstPtr& obsarray)
 {
     //#define RECTANGULAR_MARGIN 0.25
@@ -242,7 +244,7 @@ void showWallPoints(Point local_wallpoint_front, Point local_wallpoint_rear,  ro
     //ROS_INFO_STREAM("showWallPoints (" << local_wallpoint_front.x  << ", " << local_wallpoint_front.y << "), ("
     //        << local_wallpoint_rear.x << ", " << local_wallpoint_rear.y << ")");
     visualization_msgs::Marker vis_wall;
-    vis_wall.header.frame_id = "ropod/base_link";
+    vis_wall.header.frame_id = robot_name + std::string("/base_link");
     vis_wall.header.stamp = ros::Time::now();
     // vis_points.ns = line_strip.ns = line_list.ns = "points_in_map";
     vis_wall.action = visualization_msgs::Marker::ADD;
@@ -1923,7 +1925,8 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
         try
         {
             tf::StampedTransform t_ropod_pose;
-            tf_listener_->lookupTransform("map", "/ropod/base_link", ros::Time(0), t_ropod_pose);
+            std::string target_frame = std::string("/") + robot_name + std::string("/base_link");
+            tf_listener_->lookupTransform("map", target_frame, ros::Time(0), t_ropod_pose);
 
             ropod_x = t_ropod_pose.getOrigin().getX();
             ropod_y = t_ropod_pose.getOrigin().getY();
@@ -1932,7 +1935,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
         }
         catch(tf::TransformException ex)
         {
-            ROS_ERROR("Error while getting ropod pose");
+            ROS_ERROR("Error while getting ropod pose: %s", ex.what());
         }
 
         while ((ropod_colliding_obs || ropod_colliding_wall) && k < V_SCALE_OPTIONS.size())
@@ -2366,6 +2369,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "route_navigation");
     ros::NodeHandle nroshndl("~");
     ros::Rate rate(F_PLANNER);
+    robot_name = (argc > 1) ? argv[1] : "ropod";
 
     ros::Subscriber goal_cmd_sub = nroshndl.subscribe<geometry_msgs::PoseStamped>("/route_navigation/simple_goal", 10, simpleGoalCallback);
     ros::Subscriber amcl_pose_sub = nroshndl.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, getAmclPoseCallback);
