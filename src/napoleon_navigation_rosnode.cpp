@@ -2271,7 +2271,7 @@ protected:
 public:
     NapoleonPlanner(std::string name, ros::Publisher& vel_pub, ros::Rate& napoleon_rate) :
     as_(nh_, name, boost::bind(&NapoleonPlanner::executeCB, this, _1), false),
-    action_name_(name), ac_("/route_planner", true), status_(false), napoleon_rate_(napoleon_rate)
+    action_name_(name), ac_("route_planner", true), status_(false), napoleon_rate_(napoleon_rate)
     {
         vel_pub_ = vel_pub;
     }
@@ -2385,11 +2385,11 @@ int main(int argc, char** argv)
     current_state_enum_pub = nroshndl.advertise<std_msgs::Int8>("/napoleon_driving/current_state_enum", 1);
 
     // Visualize map nodes and robot
-    ropodmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/ropodpoints", 1);
-    mapmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/wmnodes", 100, true);
-    freeAreaOR_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/freeAreaOvertakeRight", 10, true);
-    freeAreaOL_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/freeAreaOvertakeLeft", 10, true);
-    wallmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/right_side_wall", 10, true);
+    ropodmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/ropodpoints", 1);
+    mapmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/wmnodes", 100, true);
+    freeAreaOR_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/freeAreaOvertakeRight", 10, true);
+    freeAreaOL_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/freeAreaOvertakeLeft", 10, true);
+    wallmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/right_side_wall", 10, true);
     tf_listener_ = new tf::TransformListener;
     // Subscribe to topic with non-associated laser points (for now all laser points)
     unsigned int bufferSize = 2;
@@ -2400,7 +2400,7 @@ int main(int argc, char** argv)
     f = boost::bind(&dynamicReconfigureCallback, _1, _2);
     dyn_recon_srv.setCallback(f);
 
-    napoleon_planner = new NapoleonPlanner("/napoleon/goto", vel_pub, rate);
+    napoleon_planner = new NapoleonPlanner("napoleon/goto", vel_pub, rate);
     action_server_enabled = napoleon_planner->start();
     if(action_server_enabled) ROS_INFO("Wait for goto action");
     while(nroshndl.ok())

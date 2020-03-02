@@ -3,9 +3,8 @@
 
 
   	<arg name="robot_name" default="ropod"/>
-    <arg name="load_name" default="load"/>
 	<arg name="laser1_name" value ="laser"/>
-    <arg name="amcl_topic" default ="/amcl_pose"/>
+    <arg name="sim_mode" default="false"/>
         <!--<arg name="map_file" default="$(find ed_object_models)/models/hospital_test_amcl/walls/map_amcl.yaml" />-->
 	<!--<arg name="map_file" default="$(find ropod_navigation_test)/config/amk-f064/map.yaml"/>-->
         <!--<arg name="map_file" default="/home/cesar/ropod-project-software/catkin_workspace/src/applications/occupancy_grids/tue/lab-level/map.yaml"/>-->
@@ -27,13 +26,21 @@
         <param name="default_ropod_load_navigation_param_file" value ="$(find napoleon_navigation)/config/footprint_local_planner_params_ropod_load.yaml"/>
 
         <!-- In Gazebo: -->
-        <remap from="/napoleon_navigation/cmd_vel" to="/$(arg load_name)/cmd_vel"/>
+        <remap from="/napoleon_navigation/cmd_vel" to="/load/cmd_vel" unless="$(arg sim_mode)" />
         <!-- On ropod: -->
         <!--<remap from="/napoleon_navigation/cmd_vel" to="/ropod_tue_1/cmd_vel"/>-->
         <remap from="/napoleon_navigation/scan" to="/projected_scan_front"/> <!-- for BRSU ropod -->
 
         <!-- For simulations -->
-        <remap from="/amcl_pose" to="$(arg amcl_topic)"/>
+        <remap from="/amcl_pose" to="/$(arg robot_name)_amcl/pose" if="$(arg sim_mode)"/>
+        <remap from="/$(arg robot_name)/napoleon_navigation/cmd_vel" to="/$(arg robot_name)/cmd_vel" if="$(arg sim_mode)" />
+        <remap from="/napoleon_driving/current_state" to="napoleon_driving/current_state" if="$(arg sim_mode)"/>
+        <remap from="/napoleon_driving/current_state_enum" to="napoleon_driving/current_state_enum" if="$(arg sim_mode)"/>
+        <remap from="/napoleon_driving/feedback" to="napoleon_driving/feedback" if="$(arg sim_mode)"/>
+        <remap from="/ropod/debug_route_plan" to="debug_route_plan" if="$(arg sim_mode)"/>
+        <remap from="/ropod/napoleon/pause" to="napoleon/pause" if="$(arg sim_mode)"/>
+        <remap from="/ropod/odom" to="odom" if="$(arg sim_mode)"/>
+        <remap from="/route_navigation/simple_goal" to="route_navigation/simple_goal" if="$(arg sim_mode)"/>
     </node>
     <node name="config_switcher" pkg="napoleon_navigation" type="config_switcher" output="screen">
         <param name="ropod_config_file" value="$(find napoleon_navigation)/config/napoleon_navigation_ropod.yaml"/>
