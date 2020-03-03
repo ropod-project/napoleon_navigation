@@ -2,8 +2,8 @@
 <launch>
 
 
-  	<arg name="robot_name" default="ropod"/>
-	<arg name="laser1_name" value ="laser"/>
+    <arg name="robot_name" default="ropod"/>
+    <arg name="laser1_name" value ="laser"/>
     <arg name="sim_mode" default="false"/>
         <!--<arg name="map_file" default="$(find ed_object_models)/models/hospital_test_amcl/walls/map_amcl.yaml" />-->
 	<!--<arg name="map_file" default="$(find ropod_navigation_test)/config/amk-f064/map.yaml"/>-->
