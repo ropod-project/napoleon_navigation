@@ -2177,7 +2177,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
             cmd_vel.angular.z = 0.0;
             vel_pub.publish(cmd_vel);
         }
-        if (prev_sim_task_counter == (ka_max-1) ) {
+        if (prev_sim_task_counter <= (ka_max-1) ) {
 
             point_rear = getPointByID(task1[0],pointlist);
             point_front = getPointByID(task1[1],pointlist);
@@ -2185,9 +2185,13 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
             double distance_to_end_sqrd = distToEndSegmentSquared(pred_xy_ropod[0], point_rear, point_front);
             if( local_wallpoint_front.x < config.REACHEDTARGETTHRESHOLD && distance_to_end_sqrd < config.REACHEDTARGETTHRESHOLD*config.REACHEDTARGETTHRESHOLD)
             {
-                ropod_reached_target = true;
-                ROS_INFO("Ropod has reached its target, yay!");
-                progress_msg.sequenceNumber = planner_areas.size();
+                if (prev_sim_task_counter == (ka_max-1))
+                {
+                    ropod_reached_target = true;
+                    ROS_INFO("Ropod has reached its target, yay!");
+                }
+
+                progress_msg.sequenceNumber = prev_sim_task_counter;
                 feedback_pub.publish(progress_msg);
             }
         }
