@@ -42,6 +42,11 @@
 std::vector<PointID> pointlist;
 std::vector<AreaQuadID> arealist;
 std::vector<int> assignment;
+std::vector<string> area_names;
+std::vector<string> area_ids;
+std::vector<string> sub_area_names;
+std::vector<string> sub_area_ids;
+
 
 double ropod_x = 0, ropod_y = 0, ropod_theta = 0;
 double this_amcl_x = 0, this_amcl_y = 0, quaternion_x = 0, quaternion_y = 0, quaternion_z = 0, quaternion_w = 0, this_amcl_theta = 0, siny_cosp = 0, cosy_cosp = 0;
@@ -1712,6 +1717,10 @@ void resetNavigation()
     arealist.clear();
     pointlist.clear();
     arealist.clear();
+    area_ids.clear();
+    area_names.clear();
+    sub_area_ids.clear();
+    sub_area_names.clear();
     OBJ_X_TASK.clear();
     task1.clear();
     task2.clear();
@@ -1796,13 +1805,22 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
 
                 if(planner_areas[i].sub_areas[j].id != "")
                 {
-                    sub_area_id = std::stoi(planner_areas[i].sub_areas[j].id.c_str());
+                    string sub_area_id_str = planner_areas[i].sub_areas[j].id.c_str();
+                    sub_area_id = std::stoi(sub_area_id_str);
+                    sub_area_names.push_back(planner_areas[i].sub_areas[j].name);
+                    sub_area_ids.push_back(sub_area_id_str);
                 }
                 else
                 {
                     sub_area_id = intermediate_area_id_counter;
                     intermediate_area_id_counter = intermediate_area_id_counter + 1;
+                    sub_area_names.push_back("");
+                    sub_area_ids.push_back("");
+
                 }
+
+                area_names.push_back(planner_areas[i].name);
+                area_ids.push_back(planner_areas[i].id);
 
                 arealist.push_back(AreaQuadID(pointlist[points_size-4],
                                                pointlist[points_size-3],
@@ -1810,6 +1828,8 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
                                                pointlist[points_size-1],
                                                sub_area_id,
                                                sub_area_type));
+
+
 
                 // Plan visualization
                 vis_plan.points.clear();
@@ -1867,7 +1887,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
 
     std::clock_t start_loop;
 
-    progress_msg.totalNumber = planner_areas.size();
+    progress_msg.totalNumber = arealist.size();
     while(ros::ok() && !ropod_reached_target && !as.isPreemptRequested())
     {
         if (navigation_paused){
@@ -2177,7 +2197,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
             cmd_vel.angular.z = 0.0;
             vel_pub.publish(cmd_vel);
         }
-        if (prev_sim_task_counter == (ka_max-1) ) {
+        if (prev_sim_task_counter <= (ka_max-1) ) {
 
             point_rear = getPointByID(task1[0],pointlist);
             point_front = getPointByID(task1[1],pointlist);
@@ -2185,9 +2205,17 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
             double distance_to_end_sqrd = distToEndSegmentSquared(pred_xy_ropod[0], point_rear, point_front);
             if( local_wallpoint_front.x < config.REACHEDTARGETTHRESHOLD && distance_to_end_sqrd < config.REACHEDTARGETTHRESHOLD*config.REACHEDTARGETTHRESHOLD)
             {
-                ropod_reached_target = true;
-                ROS_INFO("Ropod has reached its target, yay!");
-                progress_msg.sequenceNumber = planner_areas.size();
+                if (prev_sim_task_counter == (ka_max-1))
+                {
+                    ropod_reached_target = true;
+                    ROS_INFO("Ropod has reached its target, yay!");
+                }
+
+                progress_msg.area_name = area_names[prev_sim_task_counter];
+                progress_msg.area_id = area_ids[prev_sim_task_counter];
+                progress_msg.subarea_id = sub_area_ids[prev_sim_task_counter];
+                progress_msg.subarea_name = sub_area_names[prev_sim_task_counter];
+                progress_msg.sequenceNumber = prev_sim_task_counter;
                 feedback_pub.publish(progress_msg);
             }
         }
