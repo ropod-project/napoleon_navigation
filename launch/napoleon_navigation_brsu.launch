@@ -17,10 +17,10 @@
 
     <node name="napoleon_navigation" pkg="napoleon_navigation" type="napoleon_navigation" output="screen" args="$(arg robot_name)">
 
-        <rosparam file="$(find ropod_navigation_test)/config/parameters/costmap_common_params.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find ropod_navigation_test)/config/parameters/footprint_ropod.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find ropod_navigation_test)/config/parameters/local_costmap_params.yaml"  command="load"/>
-        <rosparam file="$(find ropod_navigation_test)/config/parameters/teb_local_planner_params_ropod.yaml" command="load" />
+        <rosparam file="$(find ropod_navigation_test)/config/parameters/costmap_common_params.yaml" command="load" ns="local_costmap" unless="$(arg sim_mode)" />
+        <rosparam file="$(find ropod_navigation_test)/config/parameters/footprint_ropod.yaml" command="load" ns="local_costmap" unless="$(arg sim_mode)" />
+        <rosparam file="$(find ropod_navigation_test)/config/parameters/local_costmap_params.yaml"  command="load" unless="$(arg sim_mode)" />
+        <rosparam file="$(find ropod_navigation_test)/config/parameters/teb_local_planner_params_ropod.yaml" command="load" unless="$(arg sim_mode)" />
         <rosparam file="$(find napoleon_navigation)/config/napoleon_navigation_ropod.yaml" command="load" />
         <param name="default_ropod_navigation_param_file" value ="$(find napoleon_navigation)/config/footprint_local_planner_params_ropod.yaml"/>
         <param name="default_ropod_load_navigation_param_file" value ="$(find napoleon_navigation)/config/footprint_local_planner_params_ropod_load.yaml"/>
@@ -32,6 +32,11 @@
         <remap from="/napoleon_navigation/scan" to="/projected_scan_front"  unless="$(arg sim_mode)"/> <!-- for BRSU ropod -->
 
         <!-- For simulations -->
+        <rosparam file="$(find ropod_gazebo)/ros/generated_files/$(arg robot_name)/costmap_common_params.yaml" command="load" ns="global_costmap" if="$(arg sim_mode)"/>
+        <rosparam file="$(find ropod_gazebo)/ros/generated_files/$(arg robot_name)/costmap_common_params.yaml" command="load" ns="local_costmap" if="$(arg sim_mode)"/>
+        <rosparam file="$(find ropod_gazebo)/ros/generated_files/$(arg robot_name)/global_costmap_params.yaml" command="load" if="$(arg sim_mode)"/>
+        <rosparam file="$(find ropod_gazebo)/ros/generated_files/$(arg robot_name)/local_costmap_params.yaml" command="load" if="$(arg sim_mode)"/>
+        <rosparam file="$(find ropod_gazebo)/ros/config/move_base_config/teb_local_planner_params.yaml" command="load" if="$(arg sim_mode)"/>
         <remap from="/amcl_pose" to="/$(arg robot_name)_amcl/pose" if="$(arg sim_mode)"/>
         <remap from="/$(arg robot_name)/napoleon_navigation/cmd_vel" to="/$(arg robot_name)/cmd_vel" if="$(arg sim_mode)" />
         <remap from="/napoleon_driving/current_state" to="napoleon_driving/current_state" if="$(arg sim_mode)"/>
