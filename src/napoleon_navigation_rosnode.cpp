@@ -78,6 +78,8 @@ ros::Publisher current_state_pub;
 std_msgs::Int8 current_state_enum_msg;
 ros::Publisher current_state_enum_pub;
 
+std::string robot_name;
+
 void getObstaclesCallback(const ed_gui_server::objsPosVel::ConstPtr& obsarray)
 {
     //#define RECTANGULAR_MARGIN 0.25
@@ -247,7 +249,7 @@ void showWallPoints(Point local_wallpoint_front, Point local_wallpoint_rear,  ro
     //ROS_INFO_STREAM("showWallPoints (" << local_wallpoint_front.x  << ", " << local_wallpoint_front.y << "), ("
     //        << local_wallpoint_rear.x << ", " << local_wallpoint_rear.y << ")");
     visualization_msgs::Marker vis_wall;
-    vis_wall.header.frame_id = "ropod/base_link";
+    vis_wall.header.frame_id = robot_name + std::string("/base_link");
     vis_wall.header.stamp = ros::Time::now();
     // vis_points.ns = line_strip.ns = line_list.ns = "points_in_map";
     vis_wall.action = visualization_msgs::Marker::ADD;
@@ -560,7 +562,7 @@ void initializeAssignment()
     {
         if (arealist[arID].type == "hallway")
         {
-            printf("AreaNumber initial next hallway: %d\n",arID);
+            ROS_DEBUG("AreaNumber initial next hallway: %d\n",arID);
             next_hallway = arealist[arID];
             break;
         }
@@ -580,7 +582,7 @@ void initializeAssignment()
 
         if(curr_OBJ.type=="hallway")
         {
-            printf("Hallway assignment: ");
+            ROS_DEBUG("Hallway assignment: ");
             OBJ1 = getAreaByID(assignment[ka],arealist);
             OBJ2 = getAreaByID(assignment[ka+1],arealist);
             OBJ3 = getAreaByID(assignment[ka+2],arealist);
@@ -603,7 +605,7 @@ void initializeAssignment()
         }
         else if(curr_OBJ.type=="inter")
         {
-            printf("Intersection assignment: ");
+            ROS_DEBUG("Intersection assignment: ");
             OBJ1 = getAreaByID(assignment[ka-1],arealist);
             OBJ2 = getAreaByID(assignment[ka],arealist);
             OBJ3 = getAreaByID(assignment[ka+1],arealist);
@@ -735,7 +737,7 @@ void updateStateAndTask()
     // Taking a turn on an intersection
     if (!task2[5].empty()) {
 
-        //printf("Ropod entry hall task2[5] non empty: %d\n",(int)pred_ropod_on_entry_hall[j]);
+        //ROS_DEBUG("Ropod entry hall task2[5] non empty: %d\n",(int)pred_ropod_on_entry_hall[j]);
         if (pred_ropod_on_entry_hall[j] && (pred_state[prevstate] == CRUSING || pred_state[prevstate] == SPACIOUS_OVERTAKE || pred_state[prevstate] == TIGHT_OVERTAKE) ){
             pred_state[j] = pred_state[prevstate];
             //disp([num2str(i), ': Here we can switch to the next hallway']);
@@ -773,7 +775,7 @@ void updateStateAndTask()
         } else if (pred_ropod_on_entry_inter[j] && (pred_state[prevstate] == CRUSING || pred_state[prevstate] == SPACIOUS_OVERTAKE || pred_state[prevstate] == TIGHT_OVERTAKE) ) {
             // If cruising and the y position of the ropod exceeds the y
             // position of the entry
-            if(j==1)printf("Entry detected to turn intersection u = %d\n",u);
+            if(j==1)ROS_DEBUG("Entry detected to turn intersection u = %d\n",u);
             pred_state[j] = ENTRY_BEFORE_TURN_ON_INTERSECTION;
 
             PointID point_right_entry_next_wall = getPointByID(task2[2],pointlist);
@@ -782,13 +784,13 @@ void updateStateAndTask()
             // TODO: change calculation to perpendicular distances
             if(task2[5] == "right")
             {
-                if(j==1)printf("Will turn right");
+                if(j==1)ROS_DEBUG("Will turn right");
                 standard_steering_offset = 0.0;
                 steering_offset = config.START_STEERING_EARLY_RIGHT + standard_steering_offset;
             }
             else
             {
-                if(j==1)printf("Will turn left");
+                if(j==1)ROS_DEBUG("Will turn left");
                 standard_steering_offset = fmin( 0.0, fabs(cur_pivot_local.y)
                                   - (sqrt(dist2(getPoint(point_right_entry_next_wall), getPoint(point_pivot))) - config.TUBE_WIDTH_C/2.0)
                                   ) + config.ROPOD_TO_AX;
@@ -808,7 +810,7 @@ void updateStateAndTask()
 
         } else if (cur_pivot_local.x <= -config.ROPOD_TO_AX + steering_offset && pred_state[prevstate] == ALIGN_AXIS_AT_INTERSECTION) {
             // If rearaxle is aligned with the pivot minus sse
-            if(j==1)printf("Turning on  u = %d\n",u+1);
+            if(j==1)ROS_DEBUG("Turning on  u = %d\n",u+1);
             pred_state[j] = TURNING;
 
         } else if (-config.ROTATED_ENOUGH_THRES < cur_next_hallway_angle && cur_next_hallway_angle < config.ROTATED_ENOUGH_THRES && pred_state[prevstate] == TURNING) {
@@ -817,7 +819,7 @@ void updateStateAndTask()
             pred_state[j] = CRUSING;
             //disp([num2str(i), ': Here we can switch to the next task']);
             u = u+2;
-            if(j==1)printf("Done with turning intersection, now on u = %d\n",u);
+            if(j==1)ROS_DEBUG("Done with turning intersection, now on u = %d\n",u);
             area1ID = assignment[u];
             task1 = OBJ_X_TASK[u];
             if (u < ka_max-1)
@@ -855,7 +857,8 @@ void updateStateAndTask()
         }
         if (pred_state[prevstate] == TURNING)
         {
-            std::cout << "Current next hallway angle " << cur_next_hallway_angle << std::endl;
+            // std::cout << "Current next hallway angle " << cur_next_hallway_angle << std::endl;
+            ROS_DEBUG("Current next hallway angle %.2f", cur_next_hallway_angle);
         }
     // Going straight on an intersection / ot between hallways
     } else if (!task2[1].empty()) {
@@ -863,7 +866,7 @@ void updateStateAndTask()
             pred_state[j] = CRUSING;
             //disp([num2str(i), ': Here we can switch to the next hallway']);
             u = u+1;
-            if(j==1)printf("Entry detected between halls u = %d\n",u);
+            if(j==1)ROS_DEBUG("Entry detected between halls u = %d\n",u);
             if (u < ka_max-1)
             {
                 area1ID = assignment[u];
@@ -898,18 +901,18 @@ void updateStateAndTask()
         }else if (pred_ropod_on_entry_inter[j] && pred_state[prevstate] == CRUSING) {
             // If cruising and the y position of the ropod exceeds the y
             // position of the entry
-            if(j==1)printf("Entry detected to straight intersection u = %d\n",u);
+            if(j==1)ROS_DEBUG("Entry detected to straight intersection u = %d\n",u);
             pred_state[j] = ENTRY_BEFORE_GOING_STRAIGHT_ON_INTERSECTION;
         } else if (current_inter_rear_wall_local.x < config.SIZE_FRONT_ROPOD + steering_offset && pred_state[prevstate] == ENTRY_BEFORE_GOING_STRAIGHT_ON_INTERSECTION) {
             // If in entry and the y position of the ropod exceeds the y
             // position of the intersection
-            if(j==1)printf("Staright on u = %d\n",u+1);
+            if(j==1)ROS_DEBUG("Staright on u = %d\n",u+1);
             pred_state[j] = GOING_STRAIGHT_ON_INTERSECTION;
         } else if (current_inter_front_wall_local.x < -config.D_AX/2 && pred_state[prevstate] == GOING_STRAIGHT_ON_INTERSECTION) {
 
             pred_state[j] = CRUSING;
             u = u+2;
-            if(j==1)printf("Done with straight intersection, now on u = %d\n",u);
+            if(j==1)ROS_DEBUG("Done with straight intersection, now on u = %d\n",u);
             if (u < ka_max-1) {
                 area1ID = assignment[u];
                 task1 = OBJ_X_TASK[u];
@@ -1026,7 +1029,7 @@ void computeSteeringAndVelocity()
     if (pred_state[j] == CRUSING || pred_state[j] == GOING_STRAIGHT_ON_INTERSECTION || pred_state[j] == TIGHT_OVERTAKE || pred_state[j] == SPACIOUS_OVERTAKE) {
         // disp([num2str[j],' - Ropod is now cruising']);
         if (pred_state[j] == CRUSING) {   // Cruising up
-            if(j==1) printf("CRUSING\n");
+            if(j==1) ROS_DEBUG("CRUSING\n");
             if (j == 1)
             {
                 current_state_msg.data = "CRUISING";
@@ -1043,7 +1046,7 @@ void computeSteeringAndVelocity()
             }
             v_des = config.V_CRUISING;
         } else if (pred_state[j] == GOING_STRAIGHT_ON_INTERSECTION) { // Straight on inter
-            if(j==1) printf("GOING_STRAIGHT_ON_INTERSECTION\n");
+            if(j==1) ROS_DEBUG("GOING_STRAIGHT_ON_INTERSECTION\n");
             if (j == 1)
             {
                 current_state_msg.data = "GOING_STRAIGHT_ON_INTERSECTION";
@@ -1059,7 +1062,7 @@ void computeSteeringAndVelocity()
             }
             v_des = config.V_INTER_ACC;
         } else if (pred_state[j] == TIGHT_OVERTAKE) { // Tight overtake
-            if(j==1) printf("TIGHT_OVERTAKE\n");
+            if(j==1) ROS_DEBUG("TIGHT_OVERTAKE\n");
             if (j == 1)
             {
                 current_state_msg.data = "TIGHT_OVERTAKE";
@@ -1087,7 +1090,7 @@ void computeSteeringAndVelocity()
             glob_wallpoint_rear.y = lw_p_rear.y+pred_tube_width[j]*sin(wallang-M_PI/2);
             v_des = config.V_OVERTAKE;
         } else if (pred_state[j] == SPACIOUS_OVERTAKE) { // Spacious overtake
-            if(j==1) printf("SPACIOUS_OVERTAKE\n");
+            if(j==1) ROS_DEBUG("SPACIOUS_OVERTAKE\n");
             if (j == 1)
             {
                 current_state_msg.data = "SPACIOUS_OVERTAKE";
@@ -1112,13 +1115,13 @@ void computeSteeringAndVelocity()
         double carrot_length = config.CARROT_LENGTH;
         //if(distance_point_to_line < 0)
         //{
-        //    if(j==1) printf("DECREASE CARROT\n");
+        //    if(j==1) ROS_DEBUG("DECREASE CARROT\n");
         //    carrot_length = 0.3 * config.CARROT_LENGTH; // this increases sharpness of corrections
         //}
 
         pred_phi_des[j] = getSteering(local_wallpoint_front, local_wallpoint_rear, pred_tube_width[j], carrot_length, config.FEELER_SIZE );
     } else if (pred_state[j] == ENTRY_BEFORE_TURN_ON_INTERSECTION || pred_state[j] == ENTRY_BEFORE_GOING_STRAIGHT_ON_INTERSECTION) {
-        if(j==1) printf("ENTRY_BEFORE_INTERSECTION\n");
+        if(j==1) ROS_DEBUG("ENTRY_BEFORE_INTERSECTION\n");
         if (j == 1)
         {
             current_state_msg.data = "ENTRY_BEFORE_INTERSECTION";
@@ -1139,7 +1142,7 @@ void computeSteeringAndVelocity()
         pred_phi_des[j] = getSteering(local_wallpoint_front, local_wallpoint_rear, pred_tube_width[j], config.CARROT_LENGTH, config.FEELER_SIZE);
         v_des = config.V_ENTRY;
     } else if (pred_state[j] == ACCELERATE_ON_INTERSECTION) {
-        if(j==1) printf("ACCELERATE_ON_INTERSECTION\n");
+        if(j==1) ROS_DEBUG("ACCELERATE_ON_INTERSECTION\n");
         if (j == 1)
         {
             current_state_msg.data = "ACCELERATE_ON_INTERSECTION";
@@ -1180,7 +1183,7 @@ void computeSteeringAndVelocity()
             //disp("Switched early while aligning pivot because too close to front wall");
         }
     } else if (pred_state[j] == ALIGN_AXIS_AT_INTERSECTION) {
-        if(j==1) printf("ALIGN_AXIS_AT_INTERSECTION\n");
+        if(j==1) ROS_DEBUG("ALIGN_AXIS_AT_INTERSECTION\n");
         if (j == 1)
         {
             current_state_msg.data = "ALIGN_AXIS_AT_INTERSECTION";
@@ -1220,7 +1223,7 @@ void computeSteeringAndVelocity()
             //disp("Switched early while aligning pivot because too close to front wall");
         }
     } else if (pred_state[j] == TURNING) {
-        if(j==1) printf("TURNING\n");
+        if(j==1) ROS_DEBUG("TURNING\n");
         if (j == 1)
         {
             current_state_msg.data = "TURNING";
@@ -1943,7 +1946,8 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
         try
         {
             tf::StampedTransform t_ropod_pose;
-            tf_listener_->lookupTransform("map", "/ropod/base_link", ros::Time(0), t_ropod_pose);
+            std::string target_frame = std::string("/") + robot_name + std::string("/base_link");
+            tf_listener_->lookupTransform("map", target_frame, ros::Time(0), t_ropod_pose);
 
             ropod_x = t_ropod_pose.getOrigin().getX();
             ropod_y = t_ropod_pose.getOrigin().getY();
@@ -1952,7 +1956,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
         }
         catch(tf::TransformException ex)
         {
-            ROS_ERROR("Error while getting ropod pose");
+            ROS_ERROR("Error while getting ropod pose: %s", ex.what());
         }
 
         while ((ropod_colliding_obs || ropod_colliding_wall) && k < V_SCALE_OPTIONS.size())
@@ -2036,7 +2040,7 @@ void followRoute(std::vector<ropod_ros_msgs::Area> planner_areas,
                  * */
                 // Original implementation was checking for overlap between ropod shape and entry shape,
                 // maybe change later if this implementation causes strange behavior
-                //if(j==1)printf("Areas type curr next: %s, %s\n",curr_area.type.c_str(),next_area.type.c_str());
+                //if(j==1)ROS_DEBUG("Areas type curr next: %s, %s\n",curr_area.type.c_str(),next_area.type.c_str());
                 pred_ropod_on_entry_inter[j] = false;
                 pred_ropod_on_entry_hall[j] = false;
                 if (curr_area.type == "hallway" && next_area.type == "inter")
@@ -2296,7 +2300,7 @@ protected:
 public:
     NapoleonPlanner(std::string name, ros::Publisher& vel_pub, ros::Rate& napoleon_rate) :
     as_(nh_, name, boost::bind(&NapoleonPlanner::executeCB, this, _1), false),
-    action_name_(name), ac_("/route_planner", true), status_(false), napoleon_rate_(napoleon_rate)
+    action_name_(name), ac_("route_planner", true), status_(false), napoleon_rate_(napoleon_rate)
     {
         vel_pub_ = vel_pub;
     }
@@ -2394,6 +2398,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "route_navigation");
     ros::NodeHandle nroshndl("~");
     ros::Rate rate(F_PLANNER);
+    robot_name = (argc > 1) ? argv[1] : "ropod";
 
     ros::Subscriber goal_cmd_sub = nroshndl.subscribe<geometry_msgs::PoseStamped>("/route_navigation/simple_goal", 10, simpleGoalCallback);
     ros::Subscriber amcl_pose_sub = nroshndl.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, getAmclPoseCallback);
@@ -2409,11 +2414,11 @@ int main(int argc, char** argv)
     current_state_enum_pub = nroshndl.advertise<std_msgs::Int8>("/napoleon_driving/current_state_enum", 1);
 
     // Visualize map nodes and robot
-    ropodmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/ropodpoints", 1);
-    mapmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/wmnodes", 100, true);
-    freeAreaOR_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/freeAreaOvertakeRight", 10, true);
-    freeAreaOL_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/freeAreaOvertakeLeft", 10, true);
-    wallmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("/napoleon_driving/right_side_wall", 10, true);
+    ropodmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/ropodpoints", 1);
+    mapmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/wmnodes", 100, true);
+    freeAreaOR_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/freeAreaOvertakeRight", 10, true);
+    freeAreaOL_marker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/freeAreaOvertakeLeft", 10, true);
+    wallmarker_pub = nroshndl.advertise<visualization_msgs::Marker>("napoleon_driving/right_side_wall", 10, true);
     tf_listener_ = new tf::TransformListener;
     // Subscribe to topic with non-associated laser points (for now all laser points)
     unsigned int bufferSize = 2;
@@ -2424,7 +2429,7 @@ int main(int argc, char** argv)
     f = boost::bind(&dynamicReconfigureCallback, _1, _2);
     dyn_recon_srv.setCallback(f);
 
-    napoleon_planner = new NapoleonPlanner("/napoleon/goto", vel_pub, rate);
+    napoleon_planner = new NapoleonPlanner("napoleon/goto", vel_pub, rate);
     action_server_enabled = napoleon_planner->start();
     if(action_server_enabled) ROS_INFO("Wait for goto action");
     while(nroshndl.ok())
